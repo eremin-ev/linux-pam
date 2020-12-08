@@ -228,7 +228,7 @@ static char *getNISserver(pam_handle_t *pamh, unsigned long long ctrl)
 }
 #endif
 
-#ifdef WITH_SELINUX
+//#ifdef WITH_SELINUX
 
 static int _unix_run_update_binary(pam_handle_t *pamh, unsigned long long ctrl, const char *user,
     const char *fromwhat, const char *towhat, int remember)
@@ -236,7 +236,7 @@ static int _unix_run_update_binary(pam_handle_t *pamh, unsigned long long ctrl, 
     int retval, child, fds[2];
     struct sigaction newsa, oldsa;
 
-    D(("called."));
+    D(("called, fromwhat '%s', towhat '%s'", fromwhat, towhat));
     /* create a pipe for the password */
     if (pipe(fds) != 0) {
 	D(("could not make pipe"));
@@ -344,7 +344,7 @@ static int _unix_run_update_binary(pam_handle_t *pamh, unsigned long long ctrl, 
 
     return retval;
 }
-#endif
+//#endif
 
 static int check_old_password(const char *forwho, const char *newpass)
 {
@@ -481,15 +481,20 @@ static int _do_setpass(pam_handle_t* pamh, const char *forwho,
 	}
 
 	if (_unix_comesfromsource(pamh, forwho, 1, 0)) {
-		if(unlocked) {
-			if (lock_pwdf() != PAM_SUCCESS) {
-				return PAM_AUTHTOK_LOCK_BUSY;
-			}
-		}
 #ifdef WITH_SELINUX
 	        if (unix_selinux_confined())
 			  return _unix_run_update_binary(pamh, ctrl, forwho, fromwhat, towhat, remember);
 #endif
+		if (fromwhat) {
+			return _unix_run_update_binary(pamh, ctrl, forwho, fromwhat, towhat, remember);
+		}
+
+		if (unlocked) {
+			if (lock_pwdf() != PAM_SUCCESS) {
+				return PAM_AUTHTOK_LOCK_BUSY;
+			}
+		}
+
 		/* first, save old password */
 		if (save_old_password(pamh, forwho, fromwhat, remember)) {
 			retval = PAM_AUTHTOK_ERR;
@@ -805,9 +810,11 @@ pam_sm_chauthtok(pam_handle_t *pamh, int flags, int argc, const char **argv)
 			pass_new = pass_old = NULL;	/* tidy up */
 			return retval;
 		}
-		if (lock_pwdf() != PAM_SUCCESS) {
-			return PAM_AUTHTOK_LOCK_BUSY;
-		}
+
+		// FIXME need to verify password under lock in unix_update
+		//if (lock_pwdf() != PAM_SUCCESS) {
+		//	return PAM_AUTHTOK_LOCK_BUSY;
+		//}
 
 		if (pass_old) {
 			retval = _unix_verify_password(pamh, user, pass_old, ctrl);
