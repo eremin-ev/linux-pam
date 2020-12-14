@@ -228,8 +228,6 @@ static char *getNISserver(pam_handle_t *pamh, unsigned long long ctrl)
 }
 #endif
 
-//#ifdef WITH_SELINUX
-
 static int _unix_run_update_binary(pam_handle_t *pamh, unsigned long long ctrl, const char *user,
     const char *fromwhat, const char *towhat, int remember)
 {
@@ -344,7 +342,6 @@ static int _unix_run_update_binary(pam_handle_t *pamh, unsigned long long ctrl, 
 
     return retval;
 }
-//#endif
 
 static int check_old_password(const char *forwho, const char *newpass)
 {
@@ -485,9 +482,7 @@ static int _do_setpass(pam_handle_t* pamh, const char *forwho,
 	        if (unix_selinux_confined())
 			  return _unix_run_update_binary(pamh, ctrl, forwho, fromwhat, towhat, remember);
 #endif
-		if (fromwhat) {
-			return _unix_run_update_binary(pamh, ctrl, forwho, fromwhat, towhat, remember);
-		}
+		return _unix_run_update_binary(pamh, ctrl, forwho, fromwhat, towhat, remember);
 
 		if (unlocked) {
 			if (lock_pwdf() != PAM_SUCCESS) {
